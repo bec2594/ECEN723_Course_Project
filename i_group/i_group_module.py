@@ -310,21 +310,48 @@ class RoadInfrastructure:
         Order: top, right, down, left
         Find the first direction with a car and valid light, set green, move to end of queue
         """
+
+        # Counter for vehicles in each direction
+        direction_counts = {
+            "light_top": 0,
+            "light_right": 0,
+            "light_down": 0,
+            "light_left": 0
+        }
         # Get directions that have waiting vehicles
-        waiting_directions = set()
+        # waiting_directions = set()
         for vehicle in vehicles:
             light_dir = self._direction_to_light(vehicle.direction)
             if light_dir:
-                waiting_directions.add(light_dir)
+                direction_counts[light_dir] += 1
+
+        max_count = max(direction_counts.values())
+
+        THRESHOLD = 2
+        if max_count == 0:
+            return  # no valid direction
         
-        # Find the first direction in priority queue that has car and has light
+        if max_count <= THRESHOLD:
+            for direction in intersection.light_priority:
+                if direction_counts.get(direction, 0) > 0:
+                    intersection.set_green(direction)
+                    intersection.move_direction_to_end(direction)
+                    return
         for direction in intersection.light_priority:
-            if direction in waiting_directions and direction in intersection.lights:
-                # Set this direction to green
+            if direction_counts.get(direction, 0) == max_count:
                 intersection.set_green(direction)
-                # Move this direction to the end of priority queue
                 intersection.move_direction_to_end(direction)
                 break
+
+        
+        # Find the first direction in priority queue that has car and has light
+        # for direction in intersection.light_priority:
+        #     if direction in waiting_directions and direction in intersection.lights:
+        #         # Set this direction to green
+        #         intersection.set_green(direction)
+        #         # Move this direction to the end of priority queue
+        #         intersection.move_direction_to_end(direction)
+        #         break
     
     # ============== Stop Commands Generation ==============
     
