@@ -182,37 +182,57 @@ class RoadInfrastructure:
     
     # ============== Vehicle Ahead Detection ==============
     
-    def check_next_slot_occupied(self, vehicle: Vehicle) -> Tuple[bool, Optional[str]]:
+    def check_next_slot_occupied(self, vehicle: Vehicle, visited=None) -> Tuple[bool, Optional[str]]:
         """
-        Check if the next slot in front of the vehicle is occupied [2]
-        Rule: A vehicle cannot move if there is another car in the next slot
-        
-        Returns:
-            (should_stop, blocking_vehicle_id)
+        Return True only if the next slot is occupied by a vehicle
+        that cannot move away in this same timestep.
         """
+        if visited is None:
+            visited = set()
+
+        if vehicle.vehicle_id in visited:
+            # Conservative fallback to avoid infinite recursion
+            return True, vehicle.vehicle_id
+
+        visited.add(vehicle.vehicle_id)
+
         if vehicle.direction == Direction.STOP:
             return False, None
-        
-        # Calculate next slot position based on direction
+
         next_x, next_y = vehicle.x, vehicle.y
-        
+
         if vehicle.direction == Direction.UP:
-            next_y = vehicle.y + 1
+            next_y += 1
         elif vehicle.direction == Direction.DOWN:
-            next_y = vehicle.y - 1
+            next_y -= 1
         elif vehicle.direction == Direction.RIGHT:
-            next_x = vehicle.x + 1
+            next_x += 1
         elif vehicle.direction == Direction.LEFT:
-            next_x = vehicle.x - 1
-        
-        # Check if any vehicle is at the next slot
+            next_x -= 1
+
+        # Find blocking vehicle in next slot
+        blocker = None
         for other_id, other in self.vehicles.items():
             if other_id == vehicle.vehicle_id:
                 continue
-            
             if other.x == next_x and other.y == next_y:
-                return True, other_id
-        
+                blocker = other
+                break
+
+        if blocker is None:
+            return False, None
+
+        # If blocker is stopped by red light, it stays -> occupied
+        at_red_light, _ = self.check_red_light(blocker)
+        if at_red_light:
+            return True, blocker.vehicle_id
+
+        # If blocker itself cannot move away, then occupied
+        blocker_blocked, _ = self.check_next_slot_occupied(blocker, visited)
+        if blocker_blocked:
+            return True, blocker.vehicle_id
+
+        # Blocker can move away this timestep, so next slot is effectively free
         return False, None
     
     # ============== Traffic Light Detection ==============

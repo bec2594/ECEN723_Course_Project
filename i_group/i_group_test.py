@@ -87,8 +87,9 @@ class TestIGroup:
         """Test 3: Next slot occupied detection [2]"""
         print("\n[Test 3] Next Slot Occupied Detection")
         self.reset()
-        
-        # Case 1: Next slot is occupied (V2 is at x=11, V1 is at x=10 going right)
+
+        # Case 1: Front vehicle exists, but it can move away this timestep
+        # V1 should NOT see next slot as occupied
         test_data = json.dumps({
             "timestep": 1,
             "group": "v-group",
@@ -98,13 +99,16 @@ class TestIGroup:
             ]
         })
         self.infrastructure.receive_vehicle_data(test_data)
-        
+
         v1 = self.infrastructure.vehicles["V1"]
         is_occupied, blocking = self.infrastructure.check_next_slot_occupied(v1)
-        self.log_result("Detect next slot occupied by V2", is_occupied and blocking == "V2",
-                       f"blocking: {blocking}")
-        
-        # Case 2: Next slot is NOT occupied (V2 is far away)
+        self.log_result(
+            "Next slot NOT occupied if front vehicle can move away",
+            (not is_occupied),
+            f"blocking: {blocking}"
+        )
+
+        # Case 2: Next slot is NOT occupied (vehicle far away)
         self.reset()
         test_data = json.dumps({
             "timestep": 1,
@@ -115,13 +119,39 @@ class TestIGroup:
             ]
         })
         self.infrastructure.receive_vehicle_data(test_data)
-        
+
         v1 = self.infrastructure.vehicles["V1"]
         is_occupied, blocking = self.infrastructure.check_next_slot_occupied(v1)
-        self.log_result("Next slot not occupied when far away", not is_occupied,
-                       f"Distance: 10 slots, is_occupied: {is_occupied}")
-        
-        # Case 3: Vehicle going UP, next slot occupied
+        self.log_result(
+            "Next slot not occupied when far away",
+            not is_occupied,
+            f"Distance: 10 slots, is_occupied: {is_occupied}"
+        )
+
+        # Case 3: Front vehicle exists and is blocked by red light
+        # So V1 SHOULD see next slot as occupied
+        self.reset()
+        self.infrastructure.intersections["I2"].set_all_red()   # I2 = (29, 0)
+
+        test_data = json.dumps({
+            "timestep": 1,
+            "group": "v-group",
+            "vehicles": [
+                {"vehicle_id": "V1", "x": 28, "y": 0, "direction": 2, "state": 2},
+                {"vehicle_id": "V2", "x": 29, "y": 0, "direction": 2, "state": 2}
+            ]
+        })
+        self.infrastructure.receive_vehicle_data(test_data)
+
+        v1 = self.infrastructure.vehicles["V1"]
+        is_occupied, blocking = self.infrastructure.check_next_slot_occupied(v1)
+        self.log_result(
+            "Detect occupied next slot when front vehicle is blocked by red light",
+            is_occupied and blocking == "V2",
+            f"blocking: {blocking}"
+        )
+
+        # Case 4: Vertical direction - front vehicle can move away
         self.reset()
         test_data = json.dumps({
             "timestep": 1,
@@ -132,13 +162,16 @@ class TestIGroup:
             ]
         })
         self.infrastructure.receive_vehicle_data(test_data)
-        
+
         v1 = self.infrastructure.vehicles["V1"]
         is_occupied, blocking = self.infrastructure.check_next_slot_occupied(v1)
-        self.log_result("Detect next slot occupied (UP direction)", is_occupied and blocking == "V2",
-                       f"blocking: {blocking}")
-        
-        # Case 4: Vehicle with STOP direction should not check
+        self.log_result(
+            "UP direction: next slot NOT occupied if front vehicle can move away",
+            not is_occupied,
+            f"blocking: {blocking}"
+        )
+
+        # Case 5: Vehicle with STOP direction should not check
         self.reset()
         test_data = json.dumps({
             "timestep": 1,
@@ -149,11 +182,14 @@ class TestIGroup:
             ]
         })
         self.infrastructure.receive_vehicle_data(test_data)
-        
+
         v1 = self.infrastructure.vehicles["V1"]
         is_occupied, blocking = self.infrastructure.check_next_slot_occupied(v1)
-        self.log_result("Stopped vehicle does not check next slot", not is_occupied,
-                       f"V1 direction: STOP, is_occupied: {is_occupied}")
+        self.log_result(
+            "Stopped vehicle does not check next slot",
+            not is_occupied,
+            f"V1 direction: STOP, is_occupied: {is_occupied}"
+        )
     
     def test_traffic_light_no_cars(self):
         """Test 4: Traffic light - no cars at intersection"""
@@ -348,11 +384,12 @@ class TestIGroup:
         """Test 10: Stop commands generation"""
         print("\n[Test 10] Stop Commands Generation")
         self.reset()
-        
+
         # Set I5 all red
         self.infrastructure.intersections["I5"].set_all_red()
-        
-        # V1 next slot has V2, V3 at red light
+
+        # V1 follows V2, but V2 can move away
+        # V3 is at red light and should stop
         test_data = json.dumps({
             "timestep": 1,
             "group": "v-group",
@@ -363,18 +400,18 @@ class TestIGroup:
             ]
         })
         self.infrastructure.receive_vehicle_data(test_data)
-        
+
         commands = self.infrastructure.generate_stop_commands()
-        
-        # V1 should stop (next slot occupied)
+
+        # V1 should NOT stop, because V2 can move away
         v1_stop = commands.get("V1", {}).get("should_stop", False)
-        self.log_result("V1 should stop (next slot occupied)", v1_stop,
-                       f"V1 command: {commands.get('V1')}")
-        
+        self.log_result("V1 should NOT stop because V2 can move away", not v1_stop,
+                    f"V1 command: {commands.get('V1')}")
+
         # V3 should stop (red light)
         v3_stop = commands.get("V3", {}).get("should_stop", False)
         self.log_result("V3 should stop (red light)", v3_stop,
-                       f"V3 command: {commands.get('V3')}")
+                    f"V3 command: {commands.get('V3')}")
         
     def test_full_simulation(self):
         """Test 11: Full simulation flow"""
@@ -435,11 +472,12 @@ class TestIGroup:
                        f"Statistics: {stats}")
     
     def test_multiple_vehicles_same_direction(self):
-        """Test 12: Multiple vehicles same direction"""
+        """Test 12: Multiple vehicles same direction can move together"""
         print("\n[Test 12] Multiple Vehicles Same Direction")
         self.reset()
-        
+
         # 5 vehicles on same road, same direction, adjacent slots
+        # With simultaneous movement semantics, all of them should be able to move
         test_data = json.dumps({
             "timestep": 1,
             "group": "v-group",
@@ -452,21 +490,13 @@ class TestIGroup:
             ]
         })
         self.infrastructure.receive_vehicle_data(test_data)
-        
+
         commands = self.infrastructure.generate_stop_commands()
-        
-        # V1-V4 should stop (next slot occupied)
-        v1_stop = commands.get("V1", {}).get("should_stop", False)
-        v2_stop = commands.get("V2", {}).get("should_stop", False)
-        v3_stop = commands.get("V3", {}).get("should_stop", False)
-        v4_stop = commands.get("V4", {}).get("should_stop", False)
-        v5_stop = commands.get("V5", {}).get("should_stop", False)
-        
-        self.log_result("V1 should stop", v1_stop)
-        self.log_result("V2 should stop", v2_stop)
-        self.log_result("V3 should stop", v3_stop)
-        self.log_result("V4 should stop", v4_stop)
-        self.log_result("V5 should not stop (no car ahead)", not v5_stop)
+
+        for vid in ["V1", "V2", "V3", "V4", "V5"]:
+            should_stop = commands.get(vid, {}).get("should_stop", False)
+            self.log_result(f"{vid} should NOT stop", not should_stop,
+                        f"{vid} command: {commands.get(vid)}")
     
     def test_intersection_crossing(self):
         """Test 13: Intersection crossing [2]"""
@@ -617,6 +647,67 @@ class TestIGroup:
             
             self.log_result("Intersection contains id, x, y", has_id and has_x and has_y,
                            f"Example: {intersection}")
+            
+    def test_following_vehicle_can_move_if_front_vehicle_moves(self):
+        """Test 17: following vehicle should not stop if front vehicle can move away"""
+        print("\n[Test 17] Following Vehicle Can Move If Front Vehicle Moves")
+        self.reset()
+
+        test_data = json.dumps({
+            "timestep": 1,
+            "group": "v-group",
+            "vehicles": [
+                {"vehicle_id": "V1", "x": 10, "y": 0, "direction": 2, "state": 2},
+                {"vehicle_id": "V2", "x": 11, "y": 0, "direction": 2, "state": 2}
+            ]
+        })
+        self.infrastructure.receive_vehicle_data(test_data)
+
+        commands = self.infrastructure.generate_stop_commands()
+
+        v1_stop = commands.get("V1", {}).get("should_stop", False)
+        v2_stop = commands.get("V2", {}).get("should_stop", False)
+
+        self.log_result("V2 should NOT stop", not v2_stop,
+                    f"V2 command: {commands.get('V2')}")
+        self.log_result("V1 should NOT stop because V2 can move away", not v1_stop,
+                    f"V1 command: {commands.get('V1')}")
+        
+    def test_red_light_blocks_entire_queue(self):
+        """Test 18: red light at front blocks the whole queue behind"""
+        print("\n[Test 18] Red Light Blocks Entire Queue")
+        self.reset()
+
+        # Set I2 all red, intersection at (29, 0)
+        self.infrastructure.intersections["I2"].set_all_red()
+
+        # V3 is at intersection and blocked by red light
+        # V2 is directly behind V3
+        # V1 is directly behind V2
+        test_data = json.dumps({
+            "timestep": 1,
+            "group": "v-group",
+            "vehicles": [
+                {"vehicle_id": "V1", "x": 27, "y": 0, "direction": 2, "state": 2},
+                {"vehicle_id": "V2", "x": 28, "y": 0, "direction": 2, "state": 2},
+                {"vehicle_id": "V3", "x": 29, "y": 0, "direction": 2, "state": 2}
+            ]
+        })
+        self.infrastructure.receive_vehicle_data(test_data)
+
+        commands = self.infrastructure.generate_stop_commands()
+
+        self.log_result("V3 should stop because of red light",
+                    commands.get("V3", {}).get("should_stop", False),
+                    f"V3 command: {commands.get('V3')}")
+
+        self.log_result("V2 should stop because V3 cannot move",
+                    commands.get("V2", {}).get("should_stop", False),
+                    f"V2 command: {commands.get('V2')}")
+
+        self.log_result("V1 should stop because V2 cannot move",
+                    commands.get("V1", {}).get("should_stop", False),
+                    f"V1 command: {commands.get('V1')}")
     
     def run_all_tests(self):
         """Run all tests"""
@@ -640,6 +731,8 @@ class TestIGroup:
         self.test_edge_cases()
         self.test_high_traffic_scenario()
         self.test_output_format()
+        self.test_following_vehicle_can_move_if_front_vehicle_moves()
+        self.test_red_light_blocks_entire_queue()
         
         # Statistics
         print("\n" + "=" * 60)
@@ -726,7 +819,7 @@ class TrafficSimulation:
             "vehicles": vehicles
         })
     
-    def run_simulation(self, num_steps: int = 1000, num_vehicles: int = 10):
+    def run_simulation(self, num_steps: int = 1000, num_vehicles: int = 100):
         """Run simulation"""
         print("=" * 60)
         print(f"Traffic Simulation: {num_steps} steps, {num_vehicles} vehicles")
@@ -779,7 +872,7 @@ def run_tests():
 def run_simulation():
     """Run simulation demo"""
     sim = TrafficSimulation()
-    sim.run_simulation(1000, 10)
+    sim.run_simulation(1000, 100)
 
 
 def show_system_info():
