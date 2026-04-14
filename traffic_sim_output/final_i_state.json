@@ -1,0 +1,81 @@
+{
+  "timestep": 862,
+  "group": "i-group",
+  "intersections": [
+    {
+      "intersection_id": "I1",
+      "x": 0,
+      "y": 0,
+      "light_top": 0,
+      "light_right": 1
+    },
+    {
+      "intersection_id": "I2",
+      "x": 29,
+      "y": 0,
+      "light_top": 1,
+      "light_right": 1,
+      "light_left": 0
+    },
+    {
+      "intersection_id": "I3",
+      "x": 58,
+      "y": 0,
+      "light_top": 1,
+      "light_left": 0
+    },
+    {
+      "intersection_id": "I4",
+      "x": 0,
+      "y": 29,
+      "light_top": 1,
+      "light_right": 0,
+      "light_down": 1
+    },
+    {
+      "intersection_id": "I5",
+      "x": 29,
+      "y": 29,
+      "light_top": 1,
+      "light_right": 0,
+      "light_down": 1,
+      "light_left": 1
+    },
+    {
+      "intersection_id": "I6",
+      "x": 58,
+      "y": 29,
+      "light_top": 0,
+      "light_down": 1,
+      "light_left": 1
+    },
+    {
+      "intersection_id": "I7",
+      "x": 0,
+      "y": 58,
+      "light_right": 1,
+      "light_down": 0
+    },
+    {
+      "intersection_id": "I8",
+      "x": 29,
+      "y": 58,
+      "light_right": 1,
+      "light_down": 0,
+      "light_left": 1
+    },
+    {
+      "intersection_id": "I9",
+      "x": 58,
+      "y": 58,
+      "light_down": 1,
+      "light_left": 0
+    }
+  ],
+  "stop_commands": {
+    "V94": {
+      "should_stop": false,
+      "reasons": []
+    }
+  }
+}
