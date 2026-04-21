@@ -1,10 +1,10 @@
 {
-  "completed_timesteps": 863,
+  "completed_timesteps": 1288,
   "remaining_vehicles": 0,
   "collisions_logged_by_i_group": 0,
-  "history_file": "traffic_sim_output/combined_history.json",
-  "v_group_messages_file": "traffic_sim_output/v_group_messages.json",
-  "i_group_messages_file": "traffic_sim_output/i_group_messages.json",
-  "final_v_state_file": "traffic_sim_output/final_v_state.json",
-  "final_i_state_file": "traffic_sim_output/final_i_state.json"
+  "history_file": "traffic_sim_output\\combined_history.json",
+  "v_group_messages_file": "traffic_sim_output\\v_group_messages.json",
+  "i_group_messages_file": "traffic_sim_output\\i_group_messages.json",
+  "final_v_state_file": "traffic_sim_output\\final_v_state.json",
+  "final_i_state_file": "traffic_sim_output\\final_i_state.json"
 }

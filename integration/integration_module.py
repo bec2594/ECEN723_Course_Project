@@ -766,7 +766,7 @@ class CombinedTrafficSimulator:
 
 # Colab-friendly run cell
 simulator = CombinedTrafficSimulator(
-    num_vehicles=100,
+    num_vehicles=200,
     release_gap=4,
     max_steps=100000,
     seed=7,
