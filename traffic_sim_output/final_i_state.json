@@ -1,13 +1,13 @@
 {
-  "timestep": 862,
+  "timestep": 1287,
   "group": "i-group",
   "intersections": [
     {
       "intersection_id": "I1",
       "x": 0,
       "y": 0,
-      "light_top": 0,
-      "light_right": 1
+      "light_top": 1,
+      "light_right": 0
     },
     {
       "intersection_id": "I2",
@@ -73,7 +73,7 @@
     }
   ],
   "stop_commands": {
-    "V94": {
+    "V199": {
       "should_stop": false,
       "reasons": []
     }
